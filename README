@@ -1,0 +1,129 @@
+# sfRestServicePlugin (for symfony 1.1)
+
+## Configuration
+
+### factories.yml
+
+You have to change the `routing` factory to `sfRestRouting` and the `request` factory to `sfRestWebRequest`.
+
+Your edited `factories.yml` might look like this:
+
+    all:
+      routing:
+        class: sfRestRouting
+      request:
+        class: sfRestWebRequest
+
+### routing.yml
+
+This plugin extends the routing system of symfony, so you can define a constraint on the HTTP method for a routing rule.
+
+Example rule:
+
+    project_show:
+      url: /projects/:id
+      param: { module: project, action: show }
+      requirements: { id: \d, _method: GET }
+
+When you open `http://example.com/projects/1`, the plugin will check the request method is `GET`.
+
+For `GET` this is nothing spectecular, but for methods like `DELETE` or `PUT`, which you want to use in a RESTful design, it's getting quite interesting.
+
+Example delete rule:
+
+    project_delete:
+      url: /projects/:id
+      param: { module: project, action: delete }
+      requirements: { id: \d, _method: DELETE }
+
+The `_method` constraint is added to all rules. To have existing modules behave in the used fashion you have to add the following line to the standard routing rules:
+
+    requirements: { _method: (GET|POST) }
+    
+The modified `default` rule would look like this:
+
+     default:
+       url:   /:module/:action/*
+       requirements: { _method: (GET|POST) }
+
+### rest_routing.yml
+
+In a RESTful design you can identify seven basic actions every controller should provide.
+
+These are:
+
+*   index: to show a list of all resources of a type
+*   show: to show a single resource
+*   new: to get a form to create a new resource
+*   create: to create a new resource
+*   edit: to get a form to edit an existing resource
+*   update: to update an existing resource
+*   delete: to delete an existing resource
+
+If you have to define always seven routing rules, representing these actions, for every module, you won't be DRY anymore.
+
+So a new configuration file `rest_routing.yml` is introduced. In this you only have to specify your RESTful module and the base url under which it should be accessible.
+
+For the project example an entry would look the following way:
+
+    project:
+      url: /projects
+      module: project
+
+This is equal to the following seven entries in `routing.yml`:
+
+    project_index:
+      url: /projects
+      param: { module: project, action: index }
+      requirements: { _method: GET }
+    
+    project_show:
+      url: /projects
+      param: { module: project, action: show }
+      requirements: { _method: GET }
+    
+    project_new:
+      url: /projects
+      param: { module: project, action: new }
+      requirements: { _method: GET }
+    
+    project_create:
+      url: /projects
+      param: { module: project, action: create }
+      requirements: { _method: POST }
+    
+    project_edit:
+      url: /projects
+      param: { module: project, action: edit }
+      requirements: { _method: GET }
+    
+    project_update:
+      url: /projects
+      param: { module: project, action: update }
+      requirements: { _method: PUT }
+   
+    project_delete:
+      url: /projects/:id
+      param: { module: project, action: delete }
+      requirements: { id: \d, _method: DELETE }
+
+## RestUrlHelper
+
+Because most browsers don't support `DELETE` and `POST` request methods, they have to be emulated through `POST` requests.
+The special `RestUrlHelper` with its `rest_link_to` function automaticly adds some javascript code to your links to emulate unsupported methods.
+
+You use it like the normal `link_to` helper function (it has the same parameters):
+
+    [php]
+    <?php use_helper('RestUrl'); ?>
+    <p>
+      <?php echo rest_link_to('delete project', '@project_delete?id=1'); ?>
+    </p>
+
+It's important to use the route name instead of the url as the second parameter.
+
+## TODO
+
+*   use content negotiation
+*   extend view to enable different output formats (xml, json, ...)
+*   use http caching features
